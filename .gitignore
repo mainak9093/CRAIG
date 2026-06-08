@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# Datasets & training outputs (regenerated at runtime)
+data/
+results/
+checkpoints/
+save_temp/
+*.npz
+*.pth
+*.pth.tar
+*.th
+
+# LaTeX build artifacts
+*.aux
+*.out
+*.toc
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+
+# Personal / environment files (keep local, never publish)
+/config
+*.pem
+id_*
+*_rsa
+*_ed25519
+
+# Misc
+.DS_Store
+*.log
