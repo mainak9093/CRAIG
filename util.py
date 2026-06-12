@@ -4,13 +4,18 @@ import subprocess
 import time
 import gc
 
-from nearpy import Engine
-from nearpy.distances import EuclideanDistance
-from nearpy.filters import NearestFilter
-from nearpy.hashes import RandomBinaryProjections
+# [REPLICATION PATCH 2026-06-12] NearPy imports commented out: the package targets
+# old Python and none of these symbols are used anywhere in this codebase.
+# from nearpy import Engine
+# from nearpy.distances import EuclideanDistance
+# from nearpy.filters import NearestFilter
+# from nearpy.hashes import RandomBinaryProjections
+import matplotlib
+matplotlib.use('Agg')  # [REPLICATION PATCH] headless backend for background runs
 import matplotlib.pyplot as plt
 import numpy as np
 from lazy_greedy import FacilityLocation, lazy_greedy_heap
+from lowmem_fl import facility_location_order_lowmem, LOWMEM_THRESHOLD  # [REPLICATION PATCH]
 import scipy.spatial
 # from eucl_dist.cpu_dist import dist
 # from eucl_dist.gpu_dist import dist as gdist
@@ -23,8 +28,11 @@ import sklearn
 # from lazy_greedy import FacilityLocation, lazy_greedy, lazy_greedy_heap
 # from set_cover import SetCover
 
-from tensorflow.contrib.learn.python.learn.datasets.mnist import read_data_sets
-from tensorflow.examples.tutorials.mnist import input_data
+# [REPLICATION PATCH 2026-06-12] TensorFlow 1.x imports commented out: TF1 cannot be
+# installed on Python 3.13. They were only used by load_dataset('mnist'); the MNIST
+# experiment is reproduced by mnist_torch.py (torchvision data) instead.
+# from tensorflow.contrib.learn.python.learn.datasets.mnist import read_data_sets
+# from tensorflow.examples.tutorials.mnist import input_data
 
 SEED = 100
 EPS = 1E-8
@@ -283,9 +291,16 @@ def get_facility_location_submodular_order(S, B, c, smtk=0, no=0, stoch_greedy=0
 
 def faciliy_location_order(c, X, y, metric, num_per_class, smtk, no, stoch_greedy, weights=None):
     class_indices = np.where(y == c)[0]
-    print(c)
-    print(class_indices)
-    print(len(class_indices))
+    print(f'class {c}: {len(class_indices)} examples')
+    # [REPLICATION PATCH 2026-06-12] For classes too large to materialize the full
+    # N x N similarity matrix in RAM (covtype ~145k/class -> ~84 GB), use the exact
+    # low-memory facility-location path (same objective + greedy, columns computed
+    # on demand). See lowmem_fl.py. Smaller classes keep the original dense path.
+    if smtk == 0 and metric == 'euclidean' and len(class_indices) > LOWMEM_THRESHOLD:
+        w = None if weights is None else np.asarray(weights)[class_indices]
+        order, cluster_sz, greedy_time, S_time = facility_location_order_lowmem(
+            X[class_indices], num_per_class, weights=w)
+        return class_indices[order], cluster_sz, greedy_time, S_time
     S, S_time = similarity(X[class_indices], metric=metric)
     order, cluster_sz, greedy_time, F_val = get_facility_location_submodular_order(
         S, num_per_class, c, smtk, no, stoch_greedy, weights)
@@ -361,7 +376,7 @@ def save_all_orders_and_weights(folder, X, metric='l2', stoch_greedy=False, y=No
                 order_mg = np.append(order_mg, order_mg_all[c][ndx])
                 weights_mg = np.append(weights_mg, weights_mg_all[c][ndx])
         order_mg = np.array(order_mg, dtype=np.int32)
-        weights_mg = np.array(weights_mg, dtype=np.float)
+        weights_mg = np.array(weights_mg, dtype=float)  # [REPLICATION PATCH] np.float removed in numpy>=1.24
         return order_mg, weights_mg
 
     def calculate_weights(order, c):

@@ -1,0 +1,14 @@
+# [REPLICATION PATCH 2026-06-12] Modern environment for the replication.
+# The original requirements.txt pins 2019 versions (TF 1.14, torch 1.4, numpy 1.16)
+# that cannot be installed on current Python; the patched code runs on these instead.
+# For the GPU machine install torch/torchvision with the CUDA build, e.g.:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+numpy
+scipy
+scikit-learn
+matplotlib
+pandas
+torch
+torchvision
+certifi
+libsvmdata

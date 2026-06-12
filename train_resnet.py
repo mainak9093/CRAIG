@@ -1,4 +1,4 @@
-import argparse
+﻿import argparse
 import os
 import time
 import numpy as np
@@ -11,7 +11,9 @@ import torch.optim
 import torch.utils.data
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
-import resnet_icml as resnet
+# [REPLICATION PATCH 2026-06-12] the repo ships the model file as resnet.py but
+# imported it under the name resnet_icml (upstream bug); fixed to import resnet.
+import resnet
 
 from torch.utils.data import Dataset, DataLoader
 import util
@@ -87,6 +89,9 @@ parser.add_argument('--save_subset', dest='save_subset', action='store_true', he
 
 TRAIN_NUM = 50000
 CLASS_NUM = 10
+# [REPLICATION PATCH 2026-06-12] CIFAR10 lives inside the repo's data/ folder no
+# matter where the script is launched from (was the CWD-relative './data').
+DATA_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
 
 
 def main(subset_size=.1, greedy=0):
@@ -124,7 +129,7 @@ def main(subset_size=.1, greedy=0):
                                      std=[0.229, 0.224, 0.225])
 
     train_loader__ = torch.utils.data.DataLoader(
-        datasets.CIFAR10(root='./data', train=True, transform=transforms.Compose([
+        datasets.CIFAR10(root=DATA_ROOT, train=True, transform=transforms.Compose([
             transforms.RandomHorizontalFlip(),
             transforms.RandomCrop(32, 4),
             transforms.ToTensor(),
@@ -135,7 +140,7 @@ def main(subset_size=.1, greedy=0):
 
     class IndexedDataset(Dataset):
         def __init__(self):
-            self.cifar10 = datasets.CIFAR10(root='./data', train=True, transform=transforms.Compose([
+            self.cifar10 = datasets.CIFAR10(root=DATA_ROOT, train=True, transform=transforms.Compose([
             transforms.RandomHorizontalFlip(),
             transforms.RandomCrop(32, 4),
             transforms.ToTensor(),
@@ -157,7 +162,7 @@ def main(subset_size=.1, greedy=0):
         num_workers=args.workers, pin_memory=True)
 
     val_loader = torch.utils.data.DataLoader(
-        datasets.CIFAR10(root='./data', train=False, transform=transforms.Compose([
+        datasets.CIFAR10(root=DATA_ROOT, train=False, transform=transforms.Compose([
             transforms.ToTensor(),
             normalize,
         ])),
@@ -165,7 +170,7 @@ def main(subset_size=.1, greedy=0):
         num_workers=args.workers, pin_memory=True)
 
     train_val_loader = torch.utils.data.DataLoader(
-        datasets.CIFAR10(root='./data', train=True, transform=transforms.Compose([
+        datasets.CIFAR10(root=DATA_ROOT, train=True, transform=transforms.Compose([
             transforms.ToTensor(),
             normalize,
         ])),
@@ -288,7 +293,7 @@ def main(subset_size=.1, greedy=0):
                 else:  # Note: warm start
                     if args.cluster_features:
                         print(f'Selecting {B} elements greedily from features')
-                        data = datasets.CIFAR10(root='./data', train=True, transform=transforms.Compose([
+                        data = datasets.CIFAR10(root=DATA_ROOT, train=True, transform=transforms.Compose([
                             transforms.RandomHorizontalFlip(),
                             transforms.RandomCrop(32, 4),
                             transforms.ToTensor(),
@@ -379,7 +384,10 @@ def main(subset_size=.1, greedy=0):
             grd += f'_warm' if args.warm_start > 0 else ''
             grd += f'_feature' if args.cluster_features else ''
             grd += f'_ca' if args.cluster_all else ''
-            folder = f'/tmp/cifar10'
+            # [REPLICATION PATCH] results inside the repo instead of /tmp
+            _results = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results')
+            os.makedirs(_results, exist_ok=True)
+            folder = os.path.join(_results, 'cifar10')
 
             if args.save_subset:
                 print(
@@ -588,7 +596,8 @@ def accuracy(output, target, topk=(1,)):
 
     res = []
     for k in topk:
-        correct_k = correct[:k].view(-1).float().sum(0)
+        # [REPLICATION PATCH] .view on a non-contiguous tensor errors in torch>=1.7
+        correct_k = correct[:k].reshape(-1).float().sum(0)
         res.append(correct_k.mul_(100.0 / batch_size))
     return res
 
@@ -596,4 +605,5 @@ def accuracy(output, target, topk=(1,)):
 if __name__ == '__main__':
     args = parser.parse_args()
     main(subset_size=args.subset_size, greedy=args.greedy)
+
 

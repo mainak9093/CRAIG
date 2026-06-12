@@ -153,8 +153,15 @@ class Optimizer(object):
         return W, T
 
 
+# [REPLICATION PATCH 2026-06-12] datasets + results live inside the repo (was /tmp):
+# data under craig-official/data, outputs under craig-official/results.
+REPO_DIR = path.dirname(path.abspath(__file__))
+DATA_DIR = path.join(REPO_DIR, 'data')
+RESULTS_DIR = path.join(REPO_DIR, 'results')
+
+
 def load_dataset(dataset, normalize=False):
-    DATASET_DIR = '/tmp/data/'
+    DATASET_DIR = DATA_DIR
     if dataset == 'covtype':
         print(f'Loading {dataset}')
         X, y = util.load_dataset('covtype', DATASET_DIR)
@@ -312,7 +319,9 @@ def test(method='sgd', data='covtype', exp_decay=1, subset_size=1., greedy=1, sh
     else:
         g_range, b_range = get_param_range(subset_size, exp_decay, method, data)
 
-    folder = f'/tmp/{data}'
+    import os as _os  # [REPLICATION PATCH] results inside the repo instead of /tmp
+    _os.makedirs(RESULTS_DIR, exist_ok=True)
+    folder = path.join(RESULTS_DIR, data)
     x_runs_f = [[]] * num_runs
     f_runs_f = np.zeros((num_runs, num_epochs))
     ft_runs_f = np.zeros((num_runs, num_epochs))
@@ -346,6 +355,11 @@ def test(method='sgd', data='covtype', exp_decay=1, subset_size=1., greedy=1, sh
 
                 order, weights, _, _, ordering_time, similarity_time = util.get_orders_and_weights(
                     int(subset_size * len(train_data)), train_data, 'euclidean', 0, 0, False, train_y)
+                # [REPLICATION PATCH] persist the ordering so later runs/methods (sgd,
+                # svrg, saga, all num_runs) reuse one selection -- this populates the
+                # cache that the read path above already looks for.
+                np.savez(f'{folder}_{subset_size}_{metric}', order=order, weight=weights,
+                         order_time=ordering_time, similarity_time=similarity_time)
 
                 """ use the following to calculate the ordering for various subset sizes """
                 # util.save_all_orders_and_weights(folder, train_data, metric=metric,
@@ -356,7 +370,7 @@ def test(method='sgd', data='covtype', exp_decay=1, subset_size=1., greedy=1, sh
             order = np.arange(0, len(train_data))
             random.shuffle(order)
             order = order[:int(subset_size * len(train_data))]
-            weights = np.ones(len(train_data), dtype=np.float)
+            weights = np.ones(len(train_data), dtype=float)  # [REPLICATION PATCH] np.float removed in numpy>=1.24
 
         print(f'--------------- run number: {itr}, rand: {rand}, '
               f'subset: {subset_size}, subset size: {len(order)}, num_epochs: {num_epochs} -----------------')
@@ -405,7 +419,7 @@ def test(method='sgd', data='covtype', exp_decay=1, subset_size=1., greedy=1, sh
 
 
 def gradient_difference(data, method, rand, metric, reg=1e-5):
-    folder = f'/tmp/{data}'
+    folder = path.join(RESULTS_DIR, data)  # [REPLICATION PATCH] was /tmp
     train_data, train_target, val_data, val_target, test_data, test_target = load_dataset(data)
 
     num_runs = 1 if 'grd' in rand else 5
@@ -430,7 +444,7 @@ def gradient_difference(data, method, rand, metric, reg=1e-5):
                 order = np.arange(0, len(train_data))
                 random.shuffle(order)
                 order = order[:int(subset_size * len(train_data))]
-                weights = np.ones(len(order), dtype=np.float) * 1./subset_size
+                weights = np.ones(len(order), dtype=float) * 1./subset_size  # [REPLICATION PATCH] np.float
 
             try:
                 res = np.load(f'{folder}_{method}_{subset_size}_{rand}_best_f_{metric}_w.npz', allow_pickle=True)
