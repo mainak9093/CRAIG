@@ -10,7 +10,7 @@ ICML Paper: Data-efficient Training of Machine Learning Models
 > run-book. Quick start:
 > ```
 > pip install -r requirements_modern.txt        # (original requirements.txt is TF1-era)
-> python run_experiments.py --stage data        # datasets -> ./data (exact paper counts)
+> python run_experiments.py --stage data        # datasets ship in ./data; verifies counts offline
 > python run_experiments.py --stage all --gpu 0 # every experiment stage
 > python plots.py --all                         # paper-style figures -> results/figures
 > ```

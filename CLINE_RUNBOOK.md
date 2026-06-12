@@ -44,14 +44,19 @@ python -c "import torch; print(torch.__version__, torch.cuda.is_available(), tor
 GATE: `cuda.is_available()` must print `True`. If not, STOP and report — do not
 fall back to CPU for the deep-learning stages.
 
-## Phase 2 — data
+## Phase 2 — data (already committed in the repo; OFFLINE verification only)
+All datasets ship inside `data/` (this machine is firewalled — no downloads
+should be needed). Running the data stage skips existing files and just prints
+the verification counts:
 ```bash
 python run_experiments.py --stage data
 ```
-GATE: the script prints line counts; they MUST be exactly
+GATE: the printed line counts MUST be exactly
 covtype 581012, ijcnn1.tr 49990, ijcnn1.t 91701, combined_scale 78823,
-combined_scale.t 19705. If `ijcnn1.tr` shows 35000, the wrong LIBSVM file was
-fetched — see REPLICATION.md §2 and re-run.
+combined_scale.t 19705 — and torchvision must print
+"Files already downloaded and verified" for MNIST and CIFAR-10.
+If anything is missing or a download is attempted, STOP and report (the repo
+checkout is incomplete) — do not fight the firewall.
 
 ## Phase 3 — smoke test (the only place short runs are allowed)
 ```bash
