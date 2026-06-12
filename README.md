@@ -17,7 +17,9 @@ ICML Paper: Data-efficient Training of Machine Learning Models
 > Notable: `mnist.py` is superseded by `mnist_torch.py` (faithful PyTorch port;
 > Keras/TF1 no longer installs), large classes use an exact low-memory
 > facility-location path (`lowmem_fl.py`), and all changed lines are marked
-> `[REPLICATION PATCH]`.
+> `[REPLICATION PATCH]`. On the GPU machine, follow
+> **[CLINE_RUNBOOK.md](CLINE_RUNBOOK.md)** — the step-by-step execution guide
+> (phases, verification gates, success criteria).
 
 
 ### Training on MNIST:
