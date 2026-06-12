@@ -1,0 +1,2 @@
+# Ship datasets byte-identical (no EOL normalization; torchvision MD5-checks CIFAR/MNIST)
+data/** -text
